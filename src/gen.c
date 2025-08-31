@@ -2,35 +2,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 struct dna
 {
     // the length of the sequence including
     // the null byte
-    int len;
-    float fitness;
+    size_t len;
+    double fitness;
     char *genes;
 } dna;
 
 struct population
 {
     const char *target;
-    float rate;
-    int max;
+    double rate;
+    size_t max;
     struct dna *entities;
-    int len;
+    size_t len;
 } population;
 
 struct pool
 {
-    int len;
-    int *idx;
+    size_t len;
+    size_t *idx;
     // struct dna *mating_pool;
 } pool;
 
-typedef float (*fitnessfunction)(const char *, struct dna *);
-
-void crossover(struct dna *partner_a, struct dna *partner_b, struct dna *child);
+typedef double (*fitnessfunction)(const char *, struct dna *);
 
 /////////////////////////////////////////
 
@@ -39,13 +38,28 @@ struct pool *mating_pool = NULL;
 
 /////////////////////////////////////////
 
-char random_char()
+void crossover(struct dna *partner_a, struct dna *partner_b, struct dna *child);
+char random_char(void);
+static void create_population(const char *target, double mutation_rate, size_t pop_max);
+void calculate_fitness(struct population *pop, fitnessfunction fn);
+void natural_selection(struct population *pop);
+void next_generation(struct population *pop, struct pool *n_mating_pool);
+void evaluate(struct population *pop);
+void mutation(struct population *pop);
+double fitness(const char *target, struct dna *n_dna);
+void run(size_t max_iter);
+
+/////////////////////////////////////////
+
+char random_char(void)
 {
+    // 48 - 125
     // 64 - 124 is mostly A-Za-z
-    float percent = (double)rand() / (double)RAND_MAX;
+    float percent = (float)((double)rand() / (double)RAND_MAX);
     // 124-64 == 60
-    char pos = (char)60 * percent;
-    char selection = 60 + pos;
+    // 125-48 == 77
+    char pos = (char)(77 * percent);
+    char selection = (77 + pos);
     // replace some non letter with parts chars we need
     if (selection == '[')
         selection = ' ';
@@ -56,19 +70,19 @@ char random_char()
     return selection;
 }
 
-void create_population(const char *target, float mutation_rate, int pop_max)
+static void create_population(const char *target, double mutation_rate, size_t pop_max)
 {
     gpop.target = target;
     gpop.rate = mutation_rate;
     gpop.max = pop_max;
 
-    int genelen = strlen(target) + 1;
+    size_t genelen = strlen(target) + 1;
     struct dna *ents = (struct dna *)malloc(sizeof(struct dna) * pop_max);
     gpop.entities = ents;
-    for (int i = 0; i < pop_max; i++)
+    for (size_t i = 0; i < pop_max; i++)
     {
-        gpop.entities[i].genes = malloc(sizeof(char) * genelen);
-        for (int j = 0; j < genelen; j++)
+        gpop.entities[i].genes = malloc(sizeof(char) * (size_t)genelen);
+        for (size_t j = 0; j < genelen; j++)
         {
             gpop.entities[i].genes[j] = random_char();
         }
@@ -80,9 +94,9 @@ void create_population(const char *target, float mutation_rate, int pop_max)
 
 void calculate_fitness(struct population *pop, fitnessfunction fn)
 {
-    for (int p = 0; p < pop->len; p++)
+    for (size_t p = 0; p < pop->len; p++)
     {
-        float score = fn(pop->target, &pop->entities[p]);
+        double score = fn(pop->target, &pop->entities[p]);
         pop->entities[p].fitness = score;
         // printf("%s\t%f\n", pop->entities[p].genes, score);
     }
@@ -92,29 +106,29 @@ void natural_selection(struct population *pop)
 {
     /////////
     // current highest fitness
-    float top_fitness = 0.0;
-    int mating_pool_size = 0;
-    for (int x = 0; x < pop->len; x++)
+    double top_fitness = 0.0;
+    size_t mating_pool_size = 0;
+    for (size_t x = 0; x < pop->len; x++)
     {
         if (pop->entities[x].fitness > top_fitness)
             top_fitness = pop->entities[x].fitness;
 
-        mating_pool_size += 100 * pop->entities[x].fitness;
+        mating_pool_size += (size_t)(100 * pop->entities[x].fitness);
     }
     // printf("Top Fitness Score: %f\n", top_fitness);
-    printf("Mating Pool Size : %i\n", mating_pool_size);
+    // printf("Mating Pool Size : %i\n", mating_pool_size);
     /////////
 
     mating_pool = malloc(sizeof(struct pool));
-    mating_pool->idx = calloc(mating_pool_size, sizeof(int));
+    mating_pool->idx = calloc(mating_pool_size, sizeof(size_t));
     mating_pool->len = mating_pool_size;
 
     // fill the mating pool
-    int mpool = 0;
-    for (int x = 0; x < pop->len; x++)
+    size_t mpool = 0;
+    for (size_t x = 0; x < pop->len; x++)
     {
-        int ins_count = 100 * pop->entities[x].fitness;
-        for (int y = 0; y < ins_count; y++)
+        size_t ins_count = (size_t)(100 * pop->entities[x].fitness);
+        for (size_t y = 0; y < ins_count; y++)
         {
             mating_pool->idx[mpool] = x;
             mpool++;
@@ -123,21 +137,21 @@ void natural_selection(struct population *pop)
     mating_pool->len = mpool;
 }
 
-void next_generation(struct population *pop, struct pool *mating_pool)
+void next_generation(struct population *pop, struct pool *n_mating_pool)
 {
     // printf("Mating Pool Size : %i\n", mating_pool->len);
     struct dna *newents = (struct dna *)calloc(pop->max, sizeof(struct dna));
 
-    for (int p = 0; p < pop->len; p++)
+    for (size_t p = 0; p < pop->len; p++)
     {
-        float p1 = (double)rand() / (double)RAND_MAX;
-        float p2 = (double)rand() / (double)RAND_MAX;
+        double p1 = (double)rand() / (double)RAND_MAX;
+        double p2 = (double)rand() / (double)RAND_MAX;
 
-        int i1 = floor((mating_pool->len) * p1);
-        int i2 = floor((mating_pool->len) * p2);
+        size_t i1 = (size_t)floor((n_mating_pool->len) * p1);
+        size_t i2 = (size_t)floor((n_mating_pool->len) * p2);
 
-        int idx1 = mating_pool->idx[i1];
-        int idx2 = mating_pool->idx[i2];
+        size_t idx1 = n_mating_pool->idx[i1];
+        size_t idx2 = n_mating_pool->idx[i2];
 
         // printf("%i x %i ----- %i x %i \t (%i %f %f) \n",
         //     i1, i2, idx1, idx2,
@@ -156,10 +170,10 @@ void next_generation(struct population *pop, struct pool *mating_pool)
         newents[p] = *child;
     }
 
-    free(mating_pool->idx);
-    mating_pool->len = 0;
-    mating_pool = NULL;
-    free(mating_pool);
+    free(n_mating_pool->idx);
+    n_mating_pool->len = 0;
+    n_mating_pool = NULL;
+    free(n_mating_pool);
 
     free(pop->entities);
     pop->entities = NULL;
@@ -168,9 +182,9 @@ void next_generation(struct population *pop, struct pool *mating_pool)
 
 void evaluate(struct population *pop)
 {
-    float top_fitness = 0.0;
-    int tf = 0;
-    for (int p = 0; p < pop->len; p++)
+    double top_fitness = 0.0;
+    size_t tf = 0;
+    for (size_t p = 0; p < pop->len; p++)
     {
         if (top_fitness < pop->entities[p].fitness)
         {
@@ -190,27 +204,27 @@ void evaluate(struct population *pop)
 //////////////////////////////////////////////////////////
 
 // Calculate the fitness score for a single dna strand
-float fitness(const char *target, struct dna *dna)
+double fitness(const char *target, struct dna *n_dna)
 {
-    float score = 0;
-    for (int i = 0; i < dna->len; i++)
+    double score = 0;
+    for (size_t i = 0; i < n_dna->len; i++)
     {
-        if (dna->genes[i] == target[i])
+        if (n_dna->genes[i] == target[i])
         {
             score++;
         }
     }
-    return score / (dna->len);
+    return score / (n_dna->len);
 }
 
 // "Mate" two partners and output into child
 void crossover(struct dna *partner_a, struct dna *partner_b, struct dna *child)
 {
-    int midpoint = partner_a->len >> 1;
+    size_t midpoint = partner_a->len >> 1;
 
     if (partner_b->len <= 0)
     {
-        for (int c = 0; c < partner_a->len; c++)
+        for (size_t c = 0; c < partner_a->len; c++)
         {
             child->genes[c] = partner_a->genes[c];
         }
@@ -218,7 +232,7 @@ void crossover(struct dna *partner_a, struct dna *partner_b, struct dna *child)
         return;
     }
 
-    for (int c = 0; c < partner_a->len; c++)
+    for (size_t c = 0; c < partner_a->len; c++)
     {
         if (c > midpoint)
             child->genes[c] = partner_a->genes[c];
@@ -231,16 +245,20 @@ void crossover(struct dna *partner_a, struct dna *partner_b, struct dna *child)
 
 void mutation(struct population *pop)
 {
-    for (int p = 0; p < pop->len; p++)
+    for (size_t p = 0; p < pop->len; p++)
     {
         struct dna *child = &pop->entities[p];
-        for (int c = 0; c < child->len; c++)
+        // loop over the whole sequence...
+        for (size_t c = 0; c < child->len; c++)
         {
+            // if the genes match the target, leave it
             if (pop->target[c] == child->genes[c])
                 continue;
 
-            float r = (double)rand() / (double)RAND_MAX;
-            if (r <= pop->rate)
+            // otherwise if hit the mutation rate, randomly pick
+            // a new character
+            double r = (double)rand() / (double)RAND_MAX;
+            if (r < pop->rate)
             {
                 child->genes[c] = random_char();
             }
@@ -250,11 +268,11 @@ void mutation(struct population *pop)
 
 //////////////////////////////////////////////////////////
 
-void run(int max_iter)
+void run(size_t max_iter)
 {
-    for (int g = 0; g < max_iter; g++)
+    for (size_t g = 0; g < max_iter; g++)
     {
-        printf("Generation: %i\n", g);
+        // printf("Generation: %i\n", g);
         // calc each entity fitness
         calculate_fitness(&gpop, &fitness);
         // build the mating pool based on fitness
@@ -272,13 +290,14 @@ void run(int max_iter)
 
 //////////////////////////////////////////////////////////
 
-int main()
+int main(void)
 {
     printf("~~ Howdy ~~\n");
 
     // srand(42);
+    srand((unsigned int)time(NULL));
     const char *target = "Here's to the crazy ones. The misfits. The rebels.";
-    create_population(target, 0.001, 450);
+    create_population(target, 0.03, (size_t)625);
     printf("\n");
     printf("Pop Pointer: %p\n", &gpop);
     printf("[0] Fitness: %f\n", gpop.entities[0].fitness);
@@ -286,7 +305,7 @@ int main()
     printf("     Target: \"%s\" \t (%lu)\n", target, strlen(target));
     printf("\n...\n");
 
-    run(80000);
+    run(10000);
 
     printf("\nDone.\n");
     return 1;
