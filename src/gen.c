@@ -6,8 +6,6 @@
 
 struct dna
 {
-    // the length of the sequence including
-    // the null byte
     size_t len;
     double fitness;
     char *genes;
@@ -26,17 +24,12 @@ struct pool
 {
     size_t len;
     size_t *idx;
-    // struct dna *mating_pool;
 } pool;
 
 typedef double (*fitnessfunction)(const char *, struct dna *);
 
-/////////////////////////////////////////
-
 struct population gpop = {};
 struct pool *mating_pool = NULL;
-
-/////////////////////////////////////////
 
 void crossover(struct dna *partner_a, struct dna *partner_b, struct dna *child);
 char random_char(void);
@@ -49,18 +42,11 @@ void mutation(struct population *pop);
 double fitness(const char *target, struct dna *n_dna);
 void run(size_t max_iter);
 
-/////////////////////////////////////////
-
 char random_char(void)
 {
-    // 48 - 125
-    // 64 - 124 is mostly A-Za-z
     float percent = (float)((double)rand() / (double)RAND_MAX);
-    // 124-64 == 60
-    // 125-48 == 77
     char pos = (char)(77 * percent);
     char selection = (77 + pos);
-    // replace some non letter with parts chars we need
     if (selection == '[')
         selection = ' ';
     if (selection == ']')
@@ -86,7 +72,6 @@ static void create_population(const char *target, double mutation_rate, size_t p
         {
             gpop.entities[i].genes[j] = random_char();
         }
-        // gpop.entities[i].genes[genelen] = '\0';
         gpop.entities[i].len = genelen - 1;
     }
     gpop.len = pop_max;
@@ -98,14 +83,11 @@ void calculate_fitness(struct population *pop, fitnessfunction fn)
     {
         double score = fn(pop->target, &pop->entities[p]);
         pop->entities[p].fitness = score;
-        // printf("%s\t%f\n", pop->entities[p].genes, score);
     }
 }
 
 void natural_selection(struct population *pop)
 {
-    /////////
-    // current highest fitness
     double top_fitness = 0.0;
     size_t mating_pool_size = 0;
     for (size_t x = 0; x < pop->len; x++)
@@ -115,15 +97,11 @@ void natural_selection(struct population *pop)
 
         mating_pool_size += (size_t)(100 * pop->entities[x].fitness);
     }
-    // printf("Top Fitness Score: %f\n", top_fitness);
-    // printf("Mating Pool Size : %i\n", mating_pool_size);
-    /////////
 
     mating_pool = malloc(sizeof(struct pool));
     mating_pool->idx = calloc(mating_pool_size, sizeof(size_t));
     mating_pool->len = mating_pool_size;
 
-    // fill the mating pool
     size_t mpool = 0;
     for (size_t x = 0; x < pop->len; x++)
     {
@@ -139,7 +117,6 @@ void natural_selection(struct population *pop)
 
 void next_generation(struct population *pop, struct pool *n_mating_pool)
 {
-    // printf("Mating Pool Size : %i\n", mating_pool->len);
     struct dna *newents = (struct dna *)calloc(pop->max, sizeof(struct dna));
 
     for (size_t p = 0; p < pop->len; p++)
@@ -153,14 +130,8 @@ void next_generation(struct population *pop, struct pool *n_mating_pool)
         size_t idx1 = n_mating_pool->idx[i1];
         size_t idx2 = n_mating_pool->idx[i2];
 
-        // printf("%i x %i ----- %i x %i \t (%i %f %f) \n",
-        //     i1, i2, idx1, idx2,
-        //     mating_pool->len, p1, p2);
-
         struct dna parent_a = pop->entities[idx1];
         struct dna parent_b = pop->entities[idx2];
-
-        // printf("\t %i x %i\n", parent_a.len, parent_b.len);
 
         struct dna *child = calloc(1, sizeof(struct dna));
         child->genes = calloc(parent_a.len, sizeof(char));
@@ -201,9 +172,6 @@ void evaluate(struct population *pop)
     }
 }
 
-//////////////////////////////////////////////////////////
-
-// Calculate the fitness score for a single dna strand
 double fitness(const char *target, struct dna *n_dna)
 {
     double score = 0;
@@ -217,7 +185,6 @@ double fitness(const char *target, struct dna *n_dna)
     return score / (n_dna->len);
 }
 
-// "Mate" two partners and output into child
 void crossover(struct dna *partner_a, struct dna *partner_b, struct dna *child)
 {
     size_t midpoint = partner_a->len >> 1;
@@ -239,7 +206,6 @@ void crossover(struct dna *partner_a, struct dna *partner_b, struct dna *child)
         else
             child->genes[c] = partner_b->genes[c];
     }
-    // child->genes[partner_a->len] = '\0';
     child->len = partner_a->len;
 }
 
@@ -248,15 +214,11 @@ void mutation(struct population *pop)
     for (size_t p = 0; p < pop->len; p++)
     {
         struct dna *child = &pop->entities[p];
-        // loop over the whole sequence...
         for (size_t c = 0; c < child->len; c++)
         {
-            // if the genes match the target, leave it
             if (pop->target[c] == child->genes[c])
                 continue;
 
-            // otherwise if hit the mutation rate, randomly pick
-            // a new character
             double r = (double)rand() / (double)RAND_MAX;
             if (r < pop->rate)
             {
@@ -266,29 +228,18 @@ void mutation(struct population *pop)
     }
 }
 
-//////////////////////////////////////////////////////////
-
 void run(size_t max_iter)
 {
     for (size_t g = 0; g < max_iter; g++)
     {
-        // printf("Generation: %i\n", g);
-        // calc each entity fitness
         calculate_fitness(&gpop, &fitness);
-        // build the mating pool based on fitness
         natural_selection(&gpop);
-        //
         next_generation(&gpop, mating_pool);
-        //
         mutation(&gpop);
-        //
         calculate_fitness(&gpop, &fitness);
-        //
         evaluate(&gpop);
     }
 }
-
-//////////////////////////////////////////////////////////
 
 int main(void)
 {
