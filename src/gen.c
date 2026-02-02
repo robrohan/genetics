@@ -1,46 +1,4 @@
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-struct dna
-{
-    size_t len;
-    double fitness;
-    char *genes;
-} dna;
-
-struct population
-{
-    const char *target;
-    double rate;
-    size_t max;
-    struct dna *entities;
-    size_t len;
-} population;
-
-struct pool
-{
-    size_t len;
-    size_t *idx;
-} pool;
-
-typedef double (*fitnessfunction)(const char *, struct dna *);
-
-struct population gpop = {};
-struct pool *mating_pool = NULL;
-
-void crossover(struct dna *partner_a, struct dna *partner_b, struct dna *child);
-char random_char(void);
-static void create_population(const char *target, double mutation_rate, size_t pop_max);
-void calculate_fitness(struct population *pop, fitnessfunction fn);
-void natural_selection(struct population *pop);
-void next_generation(struct population *pop, struct pool *n_mating_pool);
-void evaluate(struct population *pop);
-void mutation(struct population *pop);
-double fitness(const char *target, struct dna *n_dna);
-void run(size_t max_iter);
+#include "gen.h"
 
 char random_char(void)
 {
@@ -56,25 +14,25 @@ char random_char(void)
     return selection;
 }
 
-static void create_population(const char *target, double mutation_rate, size_t pop_max)
+void create_population(const char *target, double mutation_rate, size_t pop_max, struct population *gpop)
 {
-    gpop.target = target;
-    gpop.rate = mutation_rate;
-    gpop.max = pop_max;
+    gpop->target = target;
+    gpop->rate = mutation_rate;
+    gpop->max = pop_max;
 
     size_t genelen = strlen(target) + 1;
     struct dna *ents = (struct dna *)malloc(sizeof(struct dna) * pop_max);
-    gpop.entities = ents;
+    gpop->entities = ents;
     for (size_t i = 0; i < pop_max; i++)
     {
-        gpop.entities[i].genes = malloc(sizeof(char) * (size_t)genelen);
+        gpop->entities[i].genes = malloc(sizeof(char) * (size_t)genelen);
         for (size_t j = 0; j < genelen; j++)
         {
-            gpop.entities[i].genes[j] = random_char();
+            gpop->entities[i].genes[j] = random_char();
         }
-        gpop.entities[i].len = genelen - 1;
+        gpop->entities[i].len = genelen - 1;
     }
-    gpop.len = pop_max;
+    gpop->len = pop_max;
 }
 
 void calculate_fitness(struct population *pop, fitnessfunction fn)
@@ -86,7 +44,7 @@ void calculate_fitness(struct population *pop, fitnessfunction fn)
     }
 }
 
-void natural_selection(struct population *pop)
+void natural_selection(struct population *pop, struct pool *mating_pool)
 {
     double top_fitness = 0.0;
     size_t mating_pool_size = 0;
@@ -98,7 +56,7 @@ void natural_selection(struct population *pop)
         mating_pool_size += (size_t)(100 * pop->entities[x].fitness);
     }
 
-    mating_pool = malloc(sizeof(struct pool));
+    // mating_pool = malloc(sizeof(struct pool));
     mating_pool->idx = calloc(mating_pool_size, sizeof(size_t));
     mating_pool->len = mating_pool_size;
 
@@ -144,7 +102,7 @@ void next_generation(struct population *pop, struct pool *n_mating_pool)
     free(n_mating_pool->idx);
     n_mating_pool->len = 0;
     n_mating_pool = NULL;
-    free(n_mating_pool);
+    // free(n_mating_pool);
 
     free(pop->entities);
     pop->entities = NULL;
@@ -226,38 +184,4 @@ void mutation(struct population *pop)
             }
         }
     }
-}
-
-void run(size_t max_iter)
-{
-    for (size_t g = 0; g < max_iter; g++)
-    {
-        calculate_fitness(&gpop, &fitness);
-        natural_selection(&gpop);
-        next_generation(&gpop, mating_pool);
-        mutation(&gpop);
-        calculate_fitness(&gpop, &fitness);
-        evaluate(&gpop);
-    }
-}
-
-int main(void)
-{
-    printf("~~ Howdy ~~\n");
-
-    srand(42);
-    // srand((unsigned int)time(NULL));
-    const char *target = "Here's to the crazy ones. The misfits. The rebels.";
-    create_population(target, 0.01, (size_t)625);
-    printf("\n");
-    printf("Pop Pointer: %p\n", &gpop);
-    printf("[0] Fitness: %f\n", gpop.entities[0].fitness);
-    printf("[0]   Genes: \"%s\" \t (%lu)\n", gpop.entities[0].genes, strlen(gpop.entities[0].genes));
-    printf("     Target: \"%s\" \t (%lu)\n", target, strlen(target));
-    printf("\n...\n");
-
-    run(50000);
-
-    printf("\nDone.\n");
-    return 1;
 }

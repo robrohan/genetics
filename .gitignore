@@ -2,3 +2,5 @@
 *~
 *.dSYM
 gen
+
+test_*

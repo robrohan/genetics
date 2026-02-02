@@ -1,3 +1,4 @@
+.PHONY: test_nn test_gen
 
 CFLAGS := -std=c99 -Wall -Wextra -Wshadow -Wpointer-arith -Wcast-align \
  -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations \
@@ -11,4 +12,19 @@ build:
 
 clean:
 	rm -f gen
+	rm -f test_gen
+	rm -f test_nn
+	rm -rf *.dSYM
 
+test_nn:
+	$(CC) $(CFLAGS) -ggdb -o test_nn \
+		src/nn.c src/test_nn.c
+	./test_nn
+
+test_gen:
+	$(CC) $(CFLAGS) -ggdb -o test_gen \
+		src/gen.c src/test_gen.c
+	./test_gen
+
+test: test_nn test_gen
+	@echo "Done"
