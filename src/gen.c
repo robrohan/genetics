@@ -45,8 +45,8 @@ void run(size_t max_iter);
 char random_char(void)
 {
     float percent = (float)((double)rand() / (double)RAND_MAX);
-    char pos = (char)(77 * percent);
-    char selection = (77 + pos);
+    char pos = (char)(64 * percent);
+    char selection = (63 + pos);
     if (selection == '[')
         selection = ' ';
     if (selection == ']')
@@ -245,10 +245,10 @@ int main(void)
 {
     printf("~~ Howdy ~~\n");
 
-    // srand(42);
-    srand((unsigned int)time(NULL));
+    srand(42);
+    // srand((unsigned int)time(NULL));
     const char *target = "Here's to the crazy ones. The misfits. The rebels.";
-    create_population(target, 0.03, (size_t)625);
+    create_population(target, 0.01, (size_t)625);
     printf("\n");
     printf("Pop Pointer: %p\n", &gpop);
     printf("[0] Fitness: %f\n", gpop.entities[0].fitness);
@@ -256,7 +256,7 @@ int main(void)
     printf("     Target: \"%s\" \t (%lu)\n", target, strlen(target));
     printf("\n...\n");
 
-    run(10000);
+    run(50000);
 
     printf("\nDone.\n");
     return 1;
