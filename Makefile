@@ -6,9 +6,6 @@ CFLAGS := -std=c99 -Wall -Wextra -Wshadow -Wpointer-arith -Wcast-align \
  -Wconversion -Wsign-conversion -Wundef -Werror
 CC := clang
 
-build:
-	$(CC) $(CFLAGS) -ggdb \
-	-o gen src/gen.c
 
 clean:
 	rm -f gen
