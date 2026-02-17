@@ -23,5 +23,11 @@ test_gen:
 		src/gen.c src/test_gen.c
 	./test_gen
 
+test_train:
+	$(CC) $(CFLAGS) -ggdb -o gen_train \
+		src/gen.c src/nn.c src/gen_train.c
+	./gen_train
+
+
 test: test_nn test_gen
 	@echo "Done"
