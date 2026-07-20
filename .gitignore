@@ -2,5 +2,6 @@
 *~
 *.dSYM
 gen
+gen_train
 
 test_*
